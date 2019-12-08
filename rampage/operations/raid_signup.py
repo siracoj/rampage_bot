@@ -209,11 +209,11 @@ class RaidRoster:
         heals = 0
         class_count = {}
         msg = f'''
-        ==================================
-        Roster for {message_parts[1].upper()}
-        ==================================
+==================================
+Roster for {message_parts[1].upper()}
+==================================
 
-                '''
+'''
         # Making sure that all signup duplicates are removed
         signups = set()
         with open(f'{message_parts[1].upper()}.txt', 'r') as f:
