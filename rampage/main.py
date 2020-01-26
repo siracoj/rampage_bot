@@ -1,5 +1,6 @@
 import discord
 
+from rampage.operations.check_logs import generate_attendance_report
 from rampage.operations.raid_signup import raid_roster_commands
 from rampage.settings import TOKEN
 
@@ -14,6 +15,9 @@ async def on_message(message):
     channel = message.channel
     if channel.name in ['bot_test', 'raid-signups']:
         await raid_roster_commands(message)
+    elif channel.name in ['bot_test', 'raid-attendance']:
+        print(message.content)
+        await generate_attendance_report(message)
 
 
 @client.event

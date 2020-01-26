@@ -2,6 +2,7 @@ from beautifultable import BeautifulTable
 from discord.message import Message
 
 from rampage.enums import RAIDS, ROLES, CLASS_ROLES, CLASSES
+from rampage.utils import chunk_message
 
 
 class RaidRoster:
@@ -250,23 +251,7 @@ Roster for {message_parts[1].upper()}
             msg += f'{class_name.lower()}: {class_amount} '
 
         # Splitting report into 2000 character messages to abide by discord's limits
-        chunks = []
-        curr_chunk = ''
-        char_total = 0
-        for line in msg.split('\n'):
-            line += '\n'
-            char_total += len(line)
-            if char_total > 2000:
-                chunks.append(curr_chunk)
-                char_total = len(line)
-                curr_chunk = line
-            else:
-                curr_chunk += line
-        else:
-            chunks.append(curr_chunk)
-
-        for chunk in chunks:
-            await channel.send(chunk)
+        await chunk_message(channel)
         
 
 async def raid_roster_commands(message):
