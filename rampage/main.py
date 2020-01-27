@@ -13,10 +13,12 @@ async def on_message(message):
     if message.author == client.user:
         return
     channel = message.channel
-    if channel.name in ['bot_test', 'raid-signups']:
+    if channel.name == 'bot_test':
         await raid_roster_commands(message)
-    elif channel.name in ['bot_test', 'raid-attendance']:
-        print(message.content)
+        await generate_attendance_report(message)
+    if channel.name == 'raid-signups':
+        await raid_roster_commands(message)
+    elif channel.name == 'raid-attendance':
         await generate_attendance_report(message)
 
 

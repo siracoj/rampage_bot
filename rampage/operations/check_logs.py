@@ -24,9 +24,14 @@ async def generate_attendance_report(message: Message):
         await message.channel.send('Generating report, please wait')
         user_attendance = {}
         total_raids = 0
-        wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}reports/user/VoldeSC?api_key={WC_LOG_API_KEY}')
+        wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}reports/guild/Rampage/Whitemane/US?api_key={WC_LOG_API_KEY}')
         raid_list = wc_log_resp.json()
         raid_list = [raid.get('id') for raid in raid_list]
+
+        wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}reports/user/VoldeSC?api_key={WC_LOG_API_KEY}')
+        user_raid_list = wc_log_resp.json()
+        user_raid_list = [raid.get('id') for raid in user_raid_list]
+        raid_list.extend(user_raid_list)
         raid_list.extend(MANUAL_RAIDS)
 
         raid_list = reversed(raid_list)
