@@ -251,7 +251,7 @@ Roster for {message_parts[1].upper()}
             msg += f'{class_name.lower()}: {class_amount} '
 
         # Splitting report into 2000 character messages to abide by discord's limits
-        await chunk_message(channel)
+        await chunk_message(channel, msg)
         
 
 async def raid_roster_commands(message):
