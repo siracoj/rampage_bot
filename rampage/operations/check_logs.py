@@ -8,7 +8,7 @@ from rampage.settings import WC_LOG_API_KEY
 CLASSIC_LOG_URL = 'https://classic.warcraftlogs.com/v1/'
 
 WC_LOGS_USERS = ['VoldeSC']
-MANUAL_RAIDS = ['jcXPk8NTvbz4C1LG', 'zaDtcW4xQ1YHGgvd', 'Dvwqd9K6WPLFgzMG', 'Yh3MqdTj1BG6fcAD', 'jcXPk8NTvbz4C1LG']
+MANUAL_RAIDS = ['jcXPk8NTvbz4C1LG', 'zaDtcW4xQ1YHGgvd', 'Yh3MqdTj1BG6fcAD', 'jcXPk8NTvbz4C1LG']
 
 
 def get_attendance_from_record(record_id: str) -> list:
