@@ -6,7 +6,7 @@ async def chunk_message(channel, msg):
     for line in msg.split('\n'):
         line += '\n'
         char_total += len(line)
-        if char_total > 2000:
+        if char_total > 1950:
             chunks.append(curr_chunk)
             char_total = len(line)
             curr_chunk = line
@@ -16,4 +16,4 @@ async def chunk_message(channel, msg):
         chunks.append(curr_chunk)
 
     for chunk in chunks:
-        await channel.send(chunk)
+        await channel.send(f'```\n{chunk}\n```')
