@@ -15,4 +15,4 @@ CLASS_ROLES = {
     'druid': ['dps', 'tank', 'heals'],
 }
 
-RAIDS = ['MC', 'ONY', 'BWL', 'PERMANENT']
+RAIDS = ['SUN', 'THURS', 'WEEK', 'PERMANENT']

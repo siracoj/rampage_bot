@@ -60,6 +60,7 @@ class RaidRoster:
                    <role>: {", ".join(ROLES)}
                    <raid>: {", ".join(RAIDS)}
                        Note: Choosing permanent signs you up for ALL future raids
+                       Note: Choosing week signs you up for the the next weeks raids, reset on sunday
 
                If you have any questions, issues or suggestions please message Crowley
                        '''
@@ -222,6 +223,14 @@ Roster for {message_parts[1].upper()}
             for raider in raiders:
                 raider = raider.strip('\n').lower()
                 signups.add(raider)
+
+        # Adding in permanent raiders
+        if message_parts[1].upper() != 'PERMANENT':
+            with open(f'WEEK.txt', 'r') as f:
+                raiders = f.readlines()
+                for raider in raiders:
+                    raider = raider.strip('\n').lower()
+                    signups.add(raider)
 
         # Adding in permanent raiders
         with open(f'PERMANENT.txt', 'r') as f:
