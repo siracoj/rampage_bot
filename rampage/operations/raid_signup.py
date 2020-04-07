@@ -1,7 +1,7 @@
 from beautifultable import BeautifulTable
 from discord.message import Message
 
-from rampage.enums import RAIDS, ROLES, CLASS_ROLES, CLASSES
+from rampage.enums import RAIDS, ROLES, CLASS_ROLES, CLASSES, ALT_RAIDS
 from rampage.utils import chunk_message
 
 
@@ -42,7 +42,7 @@ class RaidRoster:
                This is your helpful rampage bot made for all your rampage guild needs!
 
                Commands:
-                   !signup <class> <role> <raid>
+                   !signup <class> <role> <raid> <name (optional)>
                        This adds you to the raid roster for the week
                    !raidroster <raid>
                        This command displays the raidroster for the week
@@ -61,6 +61,7 @@ class RaidRoster:
                    <raid>: {", ".join(RAIDS)}
                        Note: Choosing permanent signs you up for ALL future raids
                        Note: Choosing week signs you up for the the next weeks raids, reset on sunday
+                       Note: f{", ".join(ALT_RAIDS)} are alt raids, permanent members will not be included
 
                If you have any questions, issues or suggestions please message Crowley
                        '''
@@ -81,7 +82,7 @@ class RaidRoster:
                 raider.remove(raider_part)
 
         # Validating raider message
-        if len(raider) != 4:
+        if len(raider) not in [4, 5]:
             await channel.send(
                 f'Invalid sign up {self.message.content}. Must be in the format "!signup <class> <role> <raid>"')
             return
@@ -107,18 +108,23 @@ class RaidRoster:
                 f'Invalid Role {raider[2]} for class {raider[1]}, must be one of: '
                 f'{", ".join(CLASS_ROLES.get(raider[1].lower()))}')
             return
+
+        # name override
+        if len(raider) == 5:
+            raider[0] = raider[4]
+            raider = raider[:-1]
         
         # Checking that the raider is not already added
         with open(f'{raider[3].upper()}.txt', 'r') as f:
             for line in f:
                 parts = line.split(',')
                 if parts[0] == raider[0]:
-                    await channel.send(f'Raider {self.message.author.mention} already on the roster!')
+                    await channel.send(f'Raider {raider[0]} already on the roster!')
                     return
         # Writing to a text file (this is our db...)
         with open(f'{raider[3].upper()}.txt', 'a+') as f:
             f.write(f'{",".join([r for r in raider[:-1]])}\n')
-            await channel.send(f'{self.message.author.mention} added to the raid roster!')
+            await channel.send(f'{raider[0]} added to the raid roster!')
             
     async def remove_signup(self):
         """
@@ -218,26 +224,38 @@ Roster for {message_parts[1].upper()}
 '''
         # Making sure that all signup duplicates are removed
         signups = set()
-        with open(f'{message_parts[1].upper()}.txt', 'r') as f:
+        raid_name = message_parts[1].upper()
+        with open(f'{raid_name}.txt', 'r') as f:
             raiders = f.readlines()
             for raider in raiders:
                 raider = raider.strip('\n').lower()
                 signups.add(raider)
 
-        # Adding in permanent raiders
-        if message_parts[1].upper() != 'PERMANENT':
-            with open(f'WEEK.txt', 'r') as f:
+        if raid_name not in ALT_RAIDS:
+            if raid_name != 'PERMANENT':
+                with open(f'WEEK.txt', 'r') as f:
+                    raiders = f.readlines()
+                    for raider in raiders:
+                        raider = raider.strip('\n').lower()
+                        signups.add(raider)
+
+            # Adding in permanent raiders
+            with open(f'PERMANENT.txt', 'r') as f:
                 raiders = f.readlines()
                 for raider in raiders:
                     raider = raider.strip('\n').lower()
                     signups.add(raider)
 
-        # Adding in permanent raiders
-        with open(f'PERMANENT.txt', 'r') as f:
-            raiders = f.readlines()
-            for raider in raiders:
-                raider = raider.strip('\n').lower()
-                signups.add(raider)
+        # TODO: TEMPORARY HACK BEFORE RAID TEAMS ARE SET
+        if raid_name == 'SUN':
+            # Remove raiders signed up for an alt raid
+            for alt_raid in ALT_RAIDS:
+                with open(f'{alt_raid}.txt', 'r') as f:
+                    raiders = f.readlines()
+                    for raider in raiders:
+                        print(raider)
+                        raider = raider.strip('\n').lower()
+                        signups.remove(raider)
 
         # Creating raider report
         for raider in signups:

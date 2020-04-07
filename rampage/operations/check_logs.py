@@ -94,17 +94,20 @@ async def waitlist(message: Message):
             f'Invalid waitlist command {message.content}, must be in the format: !waitlist <raider>')
         return
     records = read_waitlist_file()
+    waitlist_data = ''
+    updated_record = False
+    for record in records:
+        if record[0].lower() == message_parts[1].lower():
+            record[1] = str(int(record[1]) + 1)
+            updated_record = True
+            await message.channel.send(f'Raider {message_parts[1]} waitlist count is now {record[1]}')
+        waitlist_data += f'{",".join(record)}\n'
+    if updated_record is False:
+        waitlist_data += f'{message_parts[1]},1'
+        await message.channel.send(f'Raider {message_parts[1]} waitlist count is now 1')
+
     with open('waitlist_records.csv', 'w+') as wrf:
-        updated_record = False
-        for record in records:
-            if record[0].lower() == message_parts[1].lower():
-                record[1] = str(int(record[1]) + 1)
-                updated_record = True
-                await message.channel.send(f'Raider {message_parts[1]} waitlist count is now {record[1]}')
-            wrf.write(f'{",".join(record)}\n')
-        if updated_record is False:
-            wrf.write(f'{message_parts[1]},1')
-            await message.channel.send(f'Raider {message_parts[1]} waitlist count is now 1')
+        wrf.write(waitlist_data)
 
 
 async def remove_waitlist(message: Message):

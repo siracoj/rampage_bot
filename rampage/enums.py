@@ -15,4 +15,6 @@ CLASS_ROLES = {
     'druid': ['dps', 'tank', 'heals'],
 }
 
+ALT_RAIDS = ['MON', 'WED']
 RAIDS = ['SUN', 'THURS', 'WEEK', 'PERMANENT']
+RAIDS.extend(ALT_RAIDS)
