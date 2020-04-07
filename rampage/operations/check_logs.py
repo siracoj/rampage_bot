@@ -78,7 +78,8 @@ def read_waitlist_file():
     records = []
     with open('waitlist_records.csv', 'r') as wrf:
         for line in wrf:
-            records.append(line.split(','))
+            if not line.isspace():
+                records.append(line.split(','))
 
     return records
 
@@ -98,12 +99,12 @@ async def waitlist(message: Message):
     updated_record = False
     for record in records:
         if record[0].lower() == message_parts[1].lower():
-            record[1] = str(int(record[1]) + 1)
+            record[1] = str(int(record[1]) + 1) + "\n"
             updated_record = True
             await message.channel.send(f'Raider {message_parts[1]} waitlist count is now {record[1]}')
-        waitlist_data += f'{",".join(record)}\n'
+        waitlist_data += f'{",".join(record)}'
     if updated_record is False:
-        waitlist_data += f'{message_parts[1]},1'
+        waitlist_data += f'{message_parts[1]},1\n'
         await message.channel.send(f'Raider {message_parts[1]} waitlist count is now 1')
 
     with open('waitlist_records.csv', 'w+') as wrf:
@@ -125,10 +126,10 @@ async def remove_waitlist(message: Message):
         updated_record = False
         for record in records:
             if record[0].lower() == message_parts[1].lower():
-                record[1] = str(int(record[1]) - 1)
+                record[1] = str(int(record[1]) - 1) + '\n'
                 updated_record = True
                 await message.channel.send(f'Raider {message_parts[1]} waitlist count is now {record[1]}')
-            wrf.write(f'{",".join(record)}\n')
+            wrf.write(f'{",".join(record)}')
         if updated_record is False:
             await message.channel.send(f'Raider {message_parts[1]} not found in waitlist records')
 
