@@ -253,9 +253,9 @@ Roster for {message_parts[1].upper()}
                 with open(f'{alt_raid}.txt', 'r') as f:
                     raiders = f.readlines()
                     for raider in raiders:
-                        print(raider)
                         raider = raider.strip('\n').lower()
-                        signups.remove(raider)
+                        if raider in signups:
+                            signups.remove(raider)
 
         # Creating raider report
         for raider in signups:
