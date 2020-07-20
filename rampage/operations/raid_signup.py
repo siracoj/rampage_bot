@@ -271,7 +271,9 @@ Roster for {message_parts[1].upper()}
             elif raider_parts[2].lower() == 'tank':
                 tank += 1
             table.append_row(raider_parts)
+        total_raiders = dps + heals + tank
         msg += str(table)
+        msg += f'\n\n TOTAL RAIDERS: {total_raiders}'
         msg += f'\n\n ROLE TOTALS: DPS: {dps} HEALS:{heals} TANKS:{tank}'
         msg += f'\n\n CLASS TOTALS: '
         for class_name, class_amount in class_count.items():
