@@ -148,6 +148,7 @@ class RaidRoster:
                 raider_to_remove = message_parts[2]
             else:
                 await channel.send('You do not have permission to clear the roster')
+                return
                 
         # So... this essentially re-writes the entire raider file without the raider being removed
         new_roster = ''
