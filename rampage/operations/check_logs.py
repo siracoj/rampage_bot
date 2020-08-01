@@ -1,4 +1,5 @@
 from beautifultable import BeautifulTable
+from datetime import datetime
 from discord.message import Message
 import requests
 
@@ -9,19 +10,49 @@ CLASSIC_LOG_URL = 'https://classic.warcraftlogs.com/v1/'
 
 WC_LOGS_USERS = ['VoldeSC']
 MANUAL_RAIDS = ['jcXPk8NTvbz4C1LG', 'zaDtcW4xQ1YHGgvd', 'Yh3MqdTj1BG6fcAD', 'jcXPk8NTvbz4C1LG']
+PHASES = {
+    '1': datetime.utcfromtimestamp(1566777600),
+    '2': datetime.utcfromtimestamp(1573516800),
+    '3': datetime.utcfromtimestamp(1581465600),
+    '4': datetime.utcfromtimestamp(1586908800),
+    '5': datetime.utcfromtimestamp(1595894400),
+    '6': datetime.utcfromtimestamp(1605139200),
+}
 
 
-def get_attendance_from_record(record_id: str) -> list:
+def get_attendance_from_record(record_id: str, phase: str) -> list:
     wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}report/fights/{record_id}?api_key={WC_LOG_API_KEY}')
     fight_data = wc_log_resp.json()
-
-    raiders = fight_data.get('friendlies', [])
-    raider_names = [raider.get('name') for raider in raiders]
-    return raider_names
+    fight_date = datetime.utcfromtimestamp(float(fight_data['start'])/1000)
+    if PHASES[phase] <= fight_date < PHASES.get(str(int(phase) + 1), datetime.utcnow()):
+        raiders = fight_data.get('friendlies', [])
+        raider_names = [raider.get('name') for raider in raiders]
+        return raider_names
+    return []
 
 
 async def generate_attendance_report(message: Message):
-    await message.channel.send('Generating report, please wait')
+    await message.channel.send('Generating report, please wait (May take a few minutes)')
+
+    message_parts = message.content.split(' ')
+    for message_part in message_parts:
+        if message_part == '':
+            message_parts.remove(message_part)
+
+    current_phase = "1"
+    if len(message_parts) == 1:
+        now = datetime.utcnow()
+        for phase, start_date in PHASES.items():
+            if start_date <= now:
+                current_phase = phase
+                continue
+            break
+    else:
+        current_phase = message_parts[1]
+        if current_phase not in PHASES.keys():
+            await message.channel.send(f'Invalid Phase {current_phase}, must be one of {list(PHASES.keys())}')
+            return
+
     user_attendance = {}
     total_raids = 0
     wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}reports/guild/Rampage/Whitemane/US?api_key={WC_LOG_API_KEY}')
@@ -37,20 +68,21 @@ async def generate_attendance_report(message: Message):
     raid_list = reversed(raid_list)
     for raid in raid_list:
         total_raids += 1
-        raid_attendance = get_attendance_from_record(raid)
-        for user in user_attendance.keys():
-            user_attendance[user]['total'] += 1
+        raid_attendance = get_attendance_from_record(raid, current_phase)
+        if len(raid_attendance) > 0:
+            for user in user_attendance.keys():
+                user_attendance[user]['total'] += 1
 
-        for attendance_record in raid_attendance:
-            user_attendance.setdefault(attendance_record, {'attended': 0, 'total': 1})
-            user_attendance[attendance_record]['attended'] += 1
+            for attendance_record in raid_attendance:
+                user_attendance.setdefault(attendance_record, {'attended': 0, 'total': 1})
+                user_attendance[attendance_record]['attended'] += 1
 
     # Create table to render in the discord message
     table = BeautifulTable()
     table.column_headers = ['Name', 'Raids Attended', 'Attendance %']
     msg = f'''
 ==================================
-Attendance Report
+Attendance Report Phase {current_phase}
 ==================================
 
 '''
