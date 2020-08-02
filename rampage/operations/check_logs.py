@@ -7,8 +7,6 @@ from rampage.utils import chunk_message
 from rampage.settings import WC_LOG_API_KEY
 
 CLASSIC_LOG_URL = 'https://classic.warcraftlogs.com/v1/'
-
-WC_LOGS_USERS = []
 MANUAL_RAIDS = ['jcXPk8NTvbz4C1LG', 'zaDtcW4xQ1YHGgvd', 'Yh3MqdTj1BG6fcAD', 'jcXPk8NTvbz4C1LG']
 PHASES = {
     '1': datetime.utcfromtimestamp(1566777600),
@@ -20,15 +18,22 @@ PHASES = {
 }
 
 
-def get_attendance_from_record(record_id: str, phase: str) -> list:
+def get_attendance_from_record(record_id: str) -> list:
     wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}report/fights/{record_id}?api_key={WC_LOG_API_KEY}')
     fight_data = wc_log_resp.json()
-    fight_date = datetime.utcfromtimestamp(float(fight_data['start'])/1000)
-    if PHASES[phase] <= fight_date < PHASES.get(str(int(phase) + 1), datetime.utcnow()):
-        raiders = fight_data.get('friendlies', [])
-        raider_names = [raider.get('name') for raider in raiders]
-        return raider_names
-    return []
+    raiders = fight_data.get('friendlies', [])
+    raider_names = [raider.get('name') for raider in raiders]
+    return raider_names
+
+
+def get_current_phase():
+    current_phase = "1"
+    now = datetime.utcnow()
+    for phase, start_date in PHASES.items():
+        if start_date <= now:
+            current_phase = phase
+            continue
+        return current_phase
 
 
 async def generate_attendance_report(message: Message):
@@ -41,12 +46,7 @@ async def generate_attendance_report(message: Message):
 
     current_phase = "1"
     if len(message_parts) == 1:
-        now = datetime.utcnow()
-        for phase, start_date in PHASES.items():
-            if start_date <= now:
-                current_phase = phase
-                continue
-            break
+        current_phase = get_current_phase()
     else:
         current_phase = message_parts[1]
         if current_phase not in PHASES.keys():
@@ -56,19 +56,18 @@ async def generate_attendance_report(message: Message):
     user_attendance = {}
     total_raids = 0
     wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}reports/guild/Rampage/Whitemane/US?api_key={WC_LOG_API_KEY}')
-    raid_list = wc_log_resp.json()
-    raid_list = [raid.get('id') for raid in raid_list]
-
-    wc_log_resp = requests.get(f'{CLASSIC_LOG_URL}reports/user/VoldeSC?api_key={WC_LOG_API_KEY}')
-    user_raid_list = wc_log_resp.json()
-    user_raid_list = [raid.get('id') for raid in user_raid_list]
-    raid_list.extend(user_raid_list)
-    raid_list.extend(MANUAL_RAIDS)
+    raid_list = []
+    for raid in wc_log_resp.json():
+        fight_date = datetime.utcfromtimestamp(float(raid['start']) / 1000)
+        if (PHASES[current_phase] <= fight_date < PHASES.get(str(int(current_phase) + 1), datetime.utcnow())):
+            raid_list.append(raid.get('id'))
+    if current_phase == '2':
+        raid_list.extend(MANUAL_RAIDS)
 
     raid_list = reversed(raid_list)
     for raid in raid_list:
         total_raids += 1
-        raid_attendance = get_attendance_from_record(raid, current_phase)
+        raid_attendance = get_attendance_from_record(raid)
         if len(raid_attendance) > 0:
             for user in user_attendance.keys():
                 user_attendance[user]['total'] += 1
@@ -94,7 +93,7 @@ Attendance Report Phase {current_phase}
 
         # Accounting for waitlisted raiders
         for waitlist_record in waitlist_records:
-            if waitlist_record[0].lower() == raider.lower():
+            if waitlist_record[0].lower() == raider.lower() and waitlist_record[2] == current_phase:
                 raids_attended['total'] = raids_attended['total'] - int(waitlist_record[1])
         if raids_attended['total'] >= 1:
             percent = raids_attended['attended'] / raids_attended['total'] * 100
@@ -127,16 +126,17 @@ async def waitlist(message: Message):
             f'Invalid waitlist command {message.content}, must be in the format: !waitlist <raider>')
         return
     records = read_waitlist_file()
+    current_phase = get_current_phase()
     waitlist_data = ''
     updated_record = False
     for record in records:
-        if record[0].lower() == message_parts[1].lower():
+        if record[0].lower() == message_parts[1].lower() and record[2] == current_phase:
             record[1] = str(int(record[1]) + 1) + "\n"
             updated_record = True
             await message.channel.send(f'Raider {message_parts[1]} waitlist count is now {record[1]}')
         waitlist_data += f'{",".join(record)}'
     if updated_record is False:
-        waitlist_data += f'{message_parts[1]},1\n'
+        waitlist_data += f'{message_parts[1]},1,{current_phase}\n'
         await message.channel.send(f'Raider {message_parts[1]} waitlist count is now 1')
 
     with open('waitlist_records.csv', 'w+') as wrf:
@@ -153,11 +153,12 @@ async def remove_waitlist(message: Message):
         await message.channel.send(
             f'Invalid remove waitlist command {message.content}, must be in the format: !removewaitlist <raider>')
         return
+    current_phase = get_current_phase()
     records = read_waitlist_file()
     with open('waitlist_records.csv', 'w+') as wrf:
         updated_record = False
         for record in records:
-            if record[0].lower() == message_parts[1].lower():
+            if record[0].lower() == message_parts[1].lower() and record[2] == current_phase:
                 record[1] = str(int(record[1]) - 1) + '\n'
                 updated_record = True
                 await message.channel.send(f'Raider {message_parts[1]} waitlist count is now {record[1]}')
