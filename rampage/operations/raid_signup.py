@@ -74,9 +74,6 @@ class RaidRoster:
         <raid>: {", ".join(RAIDS)}
             Note: Choosing permanent signs you up for ALL future raids
             Note: Choosing week signs you up for the the next weeks raids, reset on sunday
-            Note: f{", ".join(ALT_RAIDS)} are alt raids, permanent members will not be included
-
-
         '''
         )
         embed.set_footer(text="If you have any questions, issues or suggestions please message Crowley")
@@ -240,7 +237,7 @@ class RaidRoster:
             for raider in raiders:
                 raider = raider.strip('\n').lower()
                 signups.add(raider)
-                
+
         await self.help()
         for raid_name in ['SUN', 'MON', 'THURS']:
             this_raid = set()
