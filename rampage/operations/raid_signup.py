@@ -1,8 +1,9 @@
 from beautifultable import BeautifulTable
 from discord.message import Message
+import discord
 
 from rampage.enums import RAIDS, ROLES, CLASS_ROLES, CLASSES, ALT_RAIDS
-from rampage.utils import chunk_message
+from rampage.utils import chunk_message, get_emoji_from_name
 
 
 class RaidRoster:
@@ -37,35 +38,49 @@ class RaidRoster:
         Raid roster bot help message
         :return: 
         """
+        post = await self.message.channel.send('\u200B')
+        embed_title = 'This is your helpful rampage bot made for all your rampage guild needs!'
+        embed = discord.Embed(title=embed_title, colour=discord.Colour(0x3498db), description='')
+        embed.add_field(name='Commands', value=f'''
+        !signup <class> <role> <raid> <name (optional)>
+            This adds you to the raid roster for the week
 
-        msg = f'''
-               This is your helpful rampage bot made for all your rampage guild needs!
 
-               Commands:
-                   !signup <class> <role> <raid> <name (optional)>
-                       This adds you to the raid roster for the week
-                   !raidroster <raid>
-                       This command displays the raidroster for the week
-                   !clearroster <raid>
-                       Clears the raid roster (officer only command)
-                   !removesignup <raid>
-                       removes you from the raid roster
-                   !removesignup <raid> <name>
-                       Removes the specified member from the roster (Officer only command)
-                   !help
-                       Displays this text
+        !raidroster <raid>
+            This command displays the raidroster for the week
 
-               Valid Options:
-                   <class>: {", ".join(CLASSES)}
-                   <role>: {", ".join(ROLES)}
-                   <raid>: {", ".join(RAIDS)}
-                       Note: Choosing permanent signs you up for ALL future raids
-                       Note: Choosing week signs you up for the the next weeks raids, reset on sunday
-                       Note: f{", ".join(ALT_RAIDS)} are alt raids, permanent members will not be included
 
-               If you have any questions, issues or suggestions please message Crowley
-                       '''
-        await self.message.channel.send(msg)
+        !clearroster <raid>
+            Clears the raid roster (officer only command)
+
+
+        !removesignup <raid>
+            removes you from the raid roster
+
+
+        !removesignup <raid> <name>
+            Removes the specified member from the roster (Officer only command)
+
+
+        !help
+            Displays this text
+
+        <class>: {", ".join(CLASSES)}
+
+
+        <role>: {", ".join(ROLES)}
+
+
+        <raid>: {", ".join(RAIDS)}
+            Note: Choosing permanent signs you up for ALL future raids
+            Note: Choosing week signs you up for the the next weeks raids, reset on sunday
+            Note: f{", ".join(ALT_RAIDS)} are alt raids, permanent members will not be included
+
+
+        '''
+        )
+        embed.set_footer(text="If you have any questions, issues or suggestions please message Crowley")
+        await post.edit(embed=embed)
         
     async def raid_signup(self):
         """
@@ -211,18 +226,11 @@ class RaidRoster:
             return
 
         # Create table to render in the discord message
-        table = BeautifulTable()
-        table.column_headers = ['Name', 'Class', 'Role']
         dps = 0
         tank = 0
         heals = 0
         class_count = {}
-        msg = f'''
-==================================
-Roster for {message_parts[1].upper()}
-==================================
 
-'''
         # Making sure that all signup duplicates are removed
         signups = set()
         raid_name = message_parts[1].upper()
@@ -258,30 +266,44 @@ Roster for {message_parts[1].upper()}
                         if raider in signups:
                             signups.remove(raider)
 
+        post = await self.message.channel.send('\u200B')
+        embed_title = f'Raid Report {raid_name}'
+        embed = discord.Embed(title=embed_title, colour=discord.Colour(0x3498db), description='')
+
+        raiders_by_class = {}
         # Creating raider report
         for raider in signups:
+
             raider_parts = raider.split(',')
             if class_count.get(raider_parts[1].lower()) is not None:
                 class_count[raider_parts[1].lower()] += 1
+                raiders_by_class[raider_parts[1].lower()].append(raider_parts[0])
+
             else:
                 class_count[raider_parts[1].lower()] = 1
+                raiders_by_class[raider_parts[1].lower()] = [raider_parts[0]]
+
             if raider_parts[2].lower() == 'dps':
                 dps += 1
             elif raider_parts[2].lower() == 'heals':
                 heals += 1
             elif raider_parts[2].lower() == 'tank':
                 tank += 1
-            table.append_row(raider_parts)
+        for class_name, class_raiders in raiders_by_class.items():
+            class_msg = ''
+            for class_raider in class_raiders:
+                class_msg += f'{class_raider}\n'
+            embed.add_field(name=f'{get_emoji_from_name(self.message.guild, class_name)} {class_count[class_name]}', value=class_msg)
+
         total_raiders = dps + heals + tank
-        msg += str(table)
-        msg += f'\n\n TOTAL RAIDERS: {total_raiders}'
-        msg += f'\n\n ROLE TOTALS: DPS: {dps} HEALS:{heals} TANKS:{tank}'
-        msg += f'\n\n CLASS TOTALS: '
-        for class_name, class_amount in class_count.items():
-            msg += f'{class_name.lower()}: {class_amount} '
+        embed.set_footer(text=f'TOTAL RAIDERS: {total_raiders} DPS: {dps} HEALS: {heals} TANKS: {tank}')
+       
+       
 
         # Splitting report into 2000 character messages to abide by discord's limits
-        await chunk_message(channel, msg)
+        # await chunk_message(channel, msg)
+       
+        await post.edit(embed=embed)
         
 
 async def raid_roster_commands(message):

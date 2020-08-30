@@ -1,5 +1,6 @@
 from beautifultable import BeautifulTable
 from datetime import datetime
+import discord
 from discord.message import Message
 import requests
 
@@ -76,15 +77,10 @@ async def generate_attendance_report(message: Message):
                 user_attendance.setdefault(attendance_record, {'attended': 0, 'total': 1})
                 user_attendance[attendance_record]['attended'] += 1
 
-    # Create table to render in the discord message
-    table = BeautifulTable()
-    table.column_headers = ['Name', 'Raids Attended', 'Attendance %']
-    msg = f'''
-==================================
-Attendance Report Phase {current_phase}
-==================================
-
-'''
+    post = await message.channel.send('\u200B')
+    embed_title = f'Attendance Report Phase {current_phase}'
+    embed = discord.Embed(title=embed_title, colour=discord.Colour(0x3498db), description='')
+    msg = ""
     user_tuple = user_attendance.items()
     user_tuple = sorted(user_tuple, key=lambda x: x[1]['attended'], reverse=True)
     min_percent = 30
@@ -98,11 +94,12 @@ Attendance Report Phase {current_phase}
         if raids_attended['total'] >= 1:
             percent = raids_attended['attended'] / raids_attended['total'] * 100
             if percent > min_percent and raids_attended['attended'] > 1:
-                row = [raider, raids_attended['attended'], f'{int(percent)}%']
-                table.append_row(row)
+                msg += f'{raider} {raids_attended["attended"]} {int(percent)}%\n'
+                
 
-    msg += str(table)
-    await chunk_message(message.channel, msg)
+    embed.add_field(name="Name, Raids Attended, Attendance %", value=msg)
+    embed.set_footer(text="Attendance #s not completely accurate")
+    await post.edit(embed=embed)
 
 
 def read_waitlist_file():

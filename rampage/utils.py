@@ -17,3 +17,13 @@ async def chunk_message(channel, msg):
 
     for chunk in chunks:
         await channel.send(f'```\n{chunk}\n```')
+
+def get_emoji_from_name(server, emoji):
+    """
+    Returns string of emoji name and id for use in messages
+    """
+    emojis = server.emojis 
+
+    for server_emoji in emojis:
+        if server_emoji.name == emoji:
+            return f"{server_emoji}"
