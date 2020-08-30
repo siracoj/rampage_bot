@@ -166,8 +166,11 @@ async def remove_waitlist(message: Message):
 
 async def attendance(message: Message):
     if message.content.startswith('!attendance'):
+        await message.delete()
         await generate_attendance_report(message)
     elif message.content.startswith('!waitlist'):
+        await message.delete()
         await waitlist(message)
     elif message.content.startswith('!removewaitlist'):
+        await message.delete()
         await remove_waitlist(message)

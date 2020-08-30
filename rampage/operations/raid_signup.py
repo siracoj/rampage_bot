@@ -46,7 +46,7 @@ class RaidRoster:
             This adds you to the raid roster for the week
 
 
-        !raidroster <raid>
+        !raidroster
             This command displays the raidroster for the week
 
 
@@ -140,6 +140,8 @@ class RaidRoster:
         with open(f'{raider[3].upper()}.txt', 'a+') as f:
             f.write(f'{",".join([r for r in raider[:-1]])}\n')
             await channel.send(f'{raider[0]} added to the raid roster!')
+        
+        await self.post_rosters()
             
     async def remove_signup(self):
         """
@@ -186,6 +188,7 @@ class RaidRoster:
             return
         with open(f'{message_parts[1].upper()}.txt', 'w') as f:
             f.write(new_roster)
+        await self.post_rosters()
     
     async def clear_roster(self):
         """
@@ -205,7 +208,7 @@ class RaidRoster:
         # Checks permission, then writes over the file blank
         if 'Officer' in [role.name for role in self.message.author.roles]:
             open(f'{message_parts[1].upper()}.txt', 'w').close()
-            await channel.send('Roster cleared!')
+            await self.post_rosters()
         else:
             await channel.send('You do not have permission to clear the roster')
             
@@ -216,94 +219,79 @@ class RaidRoster:
         """
         message_parts = self.get_message_parts()
         channel = self.message.channel
-        if len(message_parts) != 2:
-            await channel.send(
-                f'Invalid roster query {self.message.content}. Must be in the format "!raidroster <raid>"')
-            return
+        await self.post_rosters()
 
-        if message_parts[1].upper() not in RAIDS:
-            await channel.send(f'Invalid Raid {message_parts[1]}, must be one of: {", ".join(RAIDS)}')
-            return
-
-        # Create table to render in the discord message
-        dps = 0
-        tank = 0
-        heals = 0
-        class_count = {}
-
+       
+    async def post_rosters(self):
+        await self.message.channel.purge()
+       
         # Making sure that all signup duplicates are removed
         signups = set()
-        raid_name = message_parts[1].upper()
-        with open(f'{raid_name}.txt', 'r') as f:
+
+        with open(f'WEEK.txt', 'r') as f:
             raiders = f.readlines()
             for raider in raiders:
                 raider = raider.strip('\n').lower()
                 signups.add(raider)
 
-        if raid_name not in ALT_RAIDS:
-            if raid_name != 'PERMANENT':
-                with open(f'WEEK.txt', 'r') as f:
-                    raiders = f.readlines()
-                    for raider in raiders:
-                        raider = raider.strip('\n').lower()
-                        signups.add(raider)
+        # Adding in permanent raiders
+        with open(f'PERMANENT.txt', 'r') as f:
+            raiders = f.readlines()
+            for raider in raiders:
+                raider = raider.strip('\n').lower()
+                signups.add(raider)
 
-            # Adding in permanent raiders
-            with open(f'PERMANENT.txt', 'r') as f:
+        for raid_name in ['SUN', 'MON', 'THURS']:
+            this_raid = set()
+            for signup in signups:
+                this_raid.add(signup)
+            # Create table to render in the discord message
+            dps = 0
+            tank = 0
+            heals = 0
+            raiders_by_class = {}
+            class_count = {}
+
+            with open(f'{raid_name}.txt', 'r') as f:
                 raiders = f.readlines()
                 for raider in raiders:
                     raider = raider.strip('\n').lower()
-                    signups.add(raider)
+                    this_raid.add(raider)
 
-        # TODO: TEMPORARY HACK BEFORE RAID TEAMS ARE SET
-        if raid_name == 'SUN':
-            # Remove raiders signed up for an alt raid
-            for alt_raid in ALT_RAIDS:
-                with open(f'{alt_raid}.txt', 'r') as f:
-                    raiders = f.readlines()
-                    for raider in raiders:
-                        raider = raider.strip('\n').lower()
-                        if raider in signups:
-                            signups.remove(raider)
+            post = await self.message.channel.send('\u200B')
+            embed_title = f'Raid Report {raid_name}'
+            embed = discord.Embed(title=embed_title, colour=discord.Colour(0x3498db), description='')
 
-        post = await self.message.channel.send('\u200B')
-        embed_title = f'Raid Report {raid_name}'
-        embed = discord.Embed(title=embed_title, colour=discord.Colour(0x3498db), description='')
+            # Creating raider report
+            for raider in this_raid:
 
-        raiders_by_class = {}
-        # Creating raider report
-        for raider in signups:
+                raider_parts = raider.split(',')
+                if class_count.get(raider_parts[1].lower()) is not None:
+                    class_count[raider_parts[1].lower()] += 1
+                    raiders_by_class[raider_parts[1].lower()].append(raider_parts[0])
 
-            raider_parts = raider.split(',')
-            if class_count.get(raider_parts[1].lower()) is not None:
-                class_count[raider_parts[1].lower()] += 1
-                raiders_by_class[raider_parts[1].lower()].append(raider_parts[0])
+                else:
+                    class_count[raider_parts[1].lower()] = 1
+                    raiders_by_class[raider_parts[1].lower()] = [raider_parts[0]]
 
-            else:
-                class_count[raider_parts[1].lower()] = 1
-                raiders_by_class[raider_parts[1].lower()] = [raider_parts[0]]
+                if raider_parts[2].lower() == 'dps':
+                    dps += 1
+                elif raider_parts[2].lower() == 'heals':
+                    heals += 1
+                elif raider_parts[2].lower() == 'tank':
+                    tank += 1
+            for class_name, class_raiders in raiders_by_class.items():
+                class_msg = ''
+                for class_raider in class_raiders:
+                    class_msg += f'{class_raider}\n'
+                embed.add_field(name=f'{get_emoji_from_name(self.message.guild, class_name)} {class_count[class_name]}', value=class_msg)
 
-            if raider_parts[2].lower() == 'dps':
-                dps += 1
-            elif raider_parts[2].lower() == 'heals':
-                heals += 1
-            elif raider_parts[2].lower() == 'tank':
-                tank += 1
-        for class_name, class_raiders in raiders_by_class.items():
-            class_msg = ''
-            for class_raider in class_raiders:
-                class_msg += f'{class_raider}\n'
-            embed.add_field(name=f'{get_emoji_from_name(self.message.guild, class_name)} {class_count[class_name]}', value=class_msg)
+            total_raiders = dps + heals + tank
+            embed.add_field(name='TOTALS', value=f'Total: {total_raiders}\n :crossed_swords: {dps}\n :medical_symbol: {heals}\n :shield: {tank}\n')
+        
+            await post.edit(embed=embed)
 
-        total_raiders = dps + heals + tank
-        embed.set_footer(text=f'TOTAL RAIDERS: {total_raiders} DPS: {dps} HEALS: {heals} TANKS: {tank}')
-       
-       
 
-        # Splitting report into 2000 character messages to abide by discord's limits
-        # await chunk_message(channel, msg)
-       
-        await post.edit(embed=embed)
         
 
 async def raid_roster_commands(message):
@@ -314,14 +302,19 @@ async def raid_roster_commands(message):
     """
     raid_roster_bot = RaidRoster(message)
     if message.content.startswith('!signup'):
+        await message.delete()
         await raid_roster_bot.raid_signup()
     elif message.content.startswith('!help'):
+        await message.delete()
         await raid_roster_bot.help()
     elif message.content.startswith('!removesignup'):
+        await message.delete()
         await raid_roster_bot.remove_signup()
 
     elif message.content.startswith('!clearroster'):
+        await message.delete()
         await raid_roster_bot.clear_roster()
        
     elif message.content.startswith('!raidroster'):
+        await message.delete()
         await raid_roster_bot.get_roster()
