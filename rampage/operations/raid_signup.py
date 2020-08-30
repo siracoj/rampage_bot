@@ -240,7 +240,8 @@ class RaidRoster:
             for raider in raiders:
                 raider = raider.strip('\n').lower()
                 signups.add(raider)
-
+                
+        await self.help()
         for raid_name in ['SUN', 'MON', 'THURS']:
             this_raid = set()
             for signup in signups:
